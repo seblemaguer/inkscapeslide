@@ -2,3 +2,6 @@
 env/
 InkscapeSlide.egg-info/
 *.pyc
+
+build
+dist
