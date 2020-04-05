@@ -60,15 +60,12 @@ layer name. The opacity must be between 0 and 1. Example:
         sys.exit(1)
 
     # Load the file
-    f = open(FILENAME)
-    cnt = f.read()
-    f.close()
-    doc = lxml.etree.fromstring(cnt)
+    doc = lxml.etree.parse(FILENAME)
 
     # Get all layers
     ink_groupmode = '{http://www.inkscape.org/namespaces/inkscape}groupmode'
     w3c_svg_tag = '{http://www.w3.org/2000/svg}g'
-    layers = [layer for layer in doc.iterdescendants(tag=w3c_svg_tag)
+    layers = [layer for layer in doc.getroot().iterdescendants(tag=w3c_svg_tag)
             if layer.attrib.get(ink_groupmode, False) == 'layer']
 
     # inkscape names for certain things in the svg
@@ -79,7 +76,7 @@ layer name. The opacity must be between 0 and 1. Example:
             if layer.attrib.get(ink_label, False).lower() == 'content']
 
     if not content_layer:
-        print "No 'content'-labeled layer found. See --help for more"
+        print("No 'content'-labeled layer found. See --help for more")
         sys.exit(1)
 
     content = content_layer[0]
@@ -90,8 +87,8 @@ layer name. The opacity must be between 0 and 1. Example:
     preslides = [x.text for x in content.findall(ink_tspan) if x.text]
 
     if not bool(preslides):
-        print "Make sure you have a text box (with no flowRect) in the " \
-            "'content' layer, and rerun this program."
+        print("Make sure you have a text box (with no flowRect) in the " \
+              "'content' layer, and rerun this program.")
         sys.exit(1)
 
     # Get the initial style attribute and keep it
@@ -161,7 +158,7 @@ layer name. The opacity must be between 0 and 1. Example:
                     ".inkscapeslide_%s.p%05d.png" % (FILENAME, i)))
 
         # Write the XML to file, "wireframes.p1.svg"
-        f = open(svgslide, 'w')
+        f = open(svgslide, 'wb')
         f.write(lxml.etree.tostring(doc))
         f.close()
 
@@ -176,17 +173,17 @@ layer name. The opacity must be between 0 and 1. Example:
         os.unlink(svgslide)
         pdfslides.append(pdfslide)
 
-        print "Generated page %d." % (i + 1)
+        print("Generated page %d." % (i + 1))
 
     joinedpdf = False
     outputFilename = "%s.pdf" % FILENAME.split(".svg")[0]
     outputDir = os.path.dirname(outputFilename)
-    print "Output file %s" % outputFilename
+    print("Output file %s" % outputFilename)
 
     if options.imageexport:
         # Use ImageMagick to combine the PNG files into a PDF
         if not os.system('which convert > /dev/null'):
-            print "Using 'convert' to join PNG's"
+            print("Using 'convert' to join PNG's")
             pngPath = os.path.join(outputDir, ".inkscapeslide_*.png")
             proc = subprocess.Popen(
                     "convert %s -resample 180 %s" % (pngPath, outputFilename),
@@ -196,12 +193,12 @@ layer name. The opacity must be between 0 and 1. Example:
             # See if the command succeeded
             stdout_value, stderr_value = proc.communicate()
             if proc.returncode:
-                print "\nERROR: convert command failed:"
-                print stderr_value
+                print("\nERROR: convert command failed:")
+                print(stderr_value)
             else:
                 joinedpdf = True
         else:
-            print "Please install ImageMagick to provide the 'convert' utility"
+            print("Please install ImageMagick to provide the 'convert' utility")
     else:
         # Join PDFs
         has_pyPdf = False
@@ -212,7 +209,7 @@ layer name. The opacity must be between 0 and 1. Example:
             pass
 
         if has_pyPdf:
-            print "Using 'pyPdf' to join PDFs"
+            print("Using 'pyPdf' to join PDFs")
             output = pyPdf.PdfFileWriter()
             inputfiles = []
             for slide in pdfslides:
@@ -230,7 +227,7 @@ layer name. The opacity must be between 0 and 1. Example:
         # Verify pdfjoin exists in PATH
         elif not os.system('which pdfjoin > /dev/null'):
             # In the end, run: pdfjoin wireframes.p*.pdf -o Wireframes.pdf
-            print "Using 'pdfsam' to join PDFs"
+            print("Using 'pdfsam' to join PDFs")
             os.system("pdfjoin --outfile %s.pdf %s" %
                     (FILENAME.split(".svg")[0], " ".join(pdfslides)))
             joinedpdf = True
@@ -238,13 +235,13 @@ layer name. The opacity must be between 0 and 1. Example:
         # Verify pdftk exists in PATH
         elif not os.system('which pdftk > /dev/null'):
             # run: pdftk in1.pdf in2.pdf cat output Wireframes.pdf
-            print "Using 'pdftk' to join PDFs"
+            print("Using 'pdftk' to join PDFs")
             os.system("pdftk %s cat output %s.pdf" % (" ".join(pdfslides),
                     FILENAME.split(".svg")[0]))
             joinedpdf = True
         else:
-            print "Please install pdfjam, pdftk or install the 'pyPdf'" \
-                    "python package, to join PDFs."
+            print("Please install pdfjam, pdftk or install the 'pyPdf'" \
+                  "python package, to join PDFs.")
 
     # Clean up
     if joinedpdf:
