@@ -164,9 +164,10 @@ layer name. The opacity must be between 0 and 1. Example:
 
         # Determine whether to export pdf's or images (e.g. inkscape -A versus
         # inkscape -e)
-        cmd = "inkscape -A %s %s" % (pdfslide, svgslide)
+        cmd = "inkscape --export-type=pdf -o %s %s" % (pdfslide, svgslide)
+        print(cmd)
         if options.imageexport:
-            cmd = "inkscape -d 180 -e %s %s" % (pdfslide, svgslide)
+            cmd = "inkscape -d 180 --export-type=png -o %s %s" % (pdfslide, svgslide)
 
         # Using subprocess to hide stdout
         subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE).communicate()
