@@ -58,15 +58,29 @@ layer name. The opacity must be between 0 and 1. Example:
         default=False,
         help="Use PNG files as export content",
     )
+    parser.add_option(
+        "--export-pdf",
+        dest="export_pdf",
+        default=None,
+        type=str,
+        help="The outputFile"
+    )
     (options, args) = parser.parse_args()
     try:
-        FILENAME = args[0]
+        svg_filename = args[0]
     except IndexError:
         parser.print_help()
         sys.exit(1)
 
+
+    output_file = "%s.pdf" % svg_filename.split(".svg")[0]
+    if options.export_pdf is not None:
+        output_file = options.export_pdf
+    # if os.path.exists(output_file): # FIXME:
+    #     sys.exit(0)
+
     # Load the file
-    doc = lxml.etree.parse(FILENAME)
+    doc = lxml.etree.parse(svg_filename)
 
     # Get all layers
     ink_groupmode = "{http://www.inkscape.org/namespaces/inkscape}groupmode"
@@ -86,12 +100,12 @@ layer name. The opacity must be between 0 and 1. Example:
         for layer in layers
         if layer.attrib.get(ink_label, False).lower() == "content"
     ]
-
     if not content_layer:
-        cmd = f"inkscape --export-type=pdf {FILENAME}"
+        basename =  svg_filename.split(".svg")[0]
+        cmd = f"inkscape --export-type=pdf -o {basename} {svg_filename}"
         print(cmd)
         if options.imageexport:
-            cmd = f"inkscape -d 180 --export-type=png {FILENAME}"
+            cmd = f"inkscape -d 180 --export-type=png -o {basename} {svg_filename}"
 
         # Using subprocess to hide stdout
         subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE).communicate()
@@ -170,15 +184,15 @@ layer name. The opacity must be between 0 and 1. Example:
                     set_style(l, "opacity", str(opacity))
             # print l.attrib['style']
         svgslide = os.path.abspath(
-            os.path.join(os.curdir, "%s.p%d.svg" % (FILENAME, i))
+            os.path.join(os.curdir, "%s.p%d.svg" % (svg_filename, i))
         )
         pdfslide = os.path.abspath(
-            os.path.join(os.curdir, "%s.p%d.pdf" % (FILENAME, i))
+            os.path.join(os.curdir, "%s.p%d.pdf" % (svg_filename, i))
         )
         # Use the correct extension if using images
         if options.imageexport:
             pdfslide = os.path.abspath(
-                os.path.join(os.curdir, ".inkscapeslide_%s.p%05d.png" % (FILENAME, i))
+                os.path.join(os.curdir, ".inkscapeslide_%s.p%05d.png" % (svg_filename, i))
             )
 
         # Write the XML to file, "wireframes.p1.svg"
@@ -201,9 +215,9 @@ layer name. The opacity must be between 0 and 1. Example:
         print("Generated page %d." % (i + 1))
 
     joinedpdf = False
-    outputFilename = "%s.pdf" % FILENAME.split(".svg")[0]
-    outputDir = os.path.dirname(outputFilename)
-    print("Output file %s" % outputFilename)
+    output_file = "%s.pdf" % svg_filename.split(".svg")[0]
+    outputDir = os.path.dirname(output_file)
+    print("Output file %s" % output_file)
 
     if options.imageexport:
         # Use ImageMagick to combine the PNG files into a PDF
@@ -211,7 +225,7 @@ layer name. The opacity must be between 0 and 1. Example:
             print("Using 'convert' to join PNG's")
             pngPath = os.path.join(outputDir, ".inkscapeslide_*.png")
             proc = subprocess.Popen(
-                "convert %s -resample 180 %s" % (pngPath, outputFilename),
+                "convert %s -resample 180 %s" % (pngPath, output_file),
                 shell=True,
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
@@ -244,7 +258,7 @@ layer name. The opacity must be between 0 and 1. Example:
                 inputfiles.append(inputstream)
                 input = pyPdf.PdfFileReader(inputstream)
                 output.addPage(input.getPage(0))
-            outputStream = file(outputFilename, "wb")
+            outputStream = file(output_file, "wb")
             output.write(outputStream)
             outputStream.close()
             for f in inputfiles:
@@ -257,7 +271,7 @@ layer name. The opacity must be between 0 and 1. Example:
             print("Using 'pdfsam' to join PDFs")
             os.system(
                 "pdfjoin --outfile %s.pdf %s"
-                % (FILENAME.split(".svg")[0], " ".join(pdfslides))
+                % (svg_filename.split(".svg")[0], " ".join(pdfslides))
             )
             joinedpdf = True
 
@@ -266,8 +280,8 @@ layer name. The opacity must be between 0 and 1. Example:
             # run: pdftk in1.pdf in2.pdf cat output Wireframes.pdf
             print("Using 'pdftk' to join PDFs")
             os.system(
-                "pdftk %s cat output %s.pdf"
-                % (" ".join(pdfslides), FILENAME.split(".svg")[0])
+                "pdftk %s cat output %s"
+                % (" ".join(pdfslides), output_file)
             )
             joinedpdf = True
         else:
