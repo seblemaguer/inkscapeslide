@@ -18,6 +18,20 @@ import subprocess
 import re
 from optparse import OptionParser
 
+def set_style(el, style, value):
+    """
+    Set the display: style, add it if it isn't there, don't touch the
+    rest.
+    """
+    if re.search(r"%s: ?[a-zA-Z0-9.]*" % style, el.attrib["style"]):
+        el.attrib["style"] = re.sub(
+            r"(.*%s: ?)([a-zA-Z0-9.]*)(.*)" % style,
+            r"\1%s\3" % value,
+            el.attrib["style"],
+        )
+    else:
+        el.attrib["style"] = "%s:%s;%s" % (style, value, el.attrib["style"])
+
 
 def main():
     import warnings
@@ -103,7 +117,6 @@ layer name. The opacity must be between 0 and 1. Example:
     if not content_layer:
         basename =  svg_filename.split(".svg")[0]
         cmd = f"inkscape --export-type=pdf -o {basename} {svg_filename}"
-        print(cmd)
         if options.imageexport:
             cmd = f"inkscape -d 180 --export-type=png -o {basename} {svg_filename}"
 
@@ -153,42 +166,41 @@ layer name. The opacity must be between 0 and 1. Example:
                 sl_layers[name] = {"opacity": opacity}
             slides.append(sl_layers)
 
-    def set_style(el, style, value):
-        """
-        Set the display: style, add it if it isn't there, don't touch the
-        rest.
-        """
-        if re.search(r"%s: ?[a-zA-Z0-9.]*" % style, el.attrib["style"]):
-            el.attrib["style"] = re.sub(
-                r"(.*%s: ?)([a-zA-Z0-9.]*)(.*)" % style,
-                r"\1%s\3" % value,
-                el.attrib["style"],
-            )
-        else:
-            el.attrib["style"] = "%s:%s;%s" % (style, value, el.attrib["style"])
-
     pdfslides = []
     for i, slide_layers in enumerate(slides):
         for l in layers:
-            label = l.attrib.get(ink_label)
+            labels_path = set()
+            cur_n = l
+            while (cur_n is not None):
+                label = cur_n.attrib.get(ink_label)
+                if label is not None:
+                    labels_path.add(label)
+                cur_n = cur_n.getparent()
+
             # Set display mode to original
+            label = l.attrib.get(ink_label)
             l.set("style", orig_style[label])
 
             # Don't show it by default...
             set_style(l, "display", "none")
 
-            if label in slide_layers:
+            wanted_labels = labels_path.intersection(slide_layers)
+            if wanted_labels:
+                if len(wanted_labels) > 1:
+                    raise Exception(f"There seems to have multiple layers matching the one we want: {len(wanted_labels)}")
+                label = wanted_labels.pop()
                 set_style(l, "display", "inline")
                 opacity = slide_layers[label]["opacity"]
                 if opacity:
                     set_style(l, "opacity", str(opacity))
-            # print l.attrib['style']
+
         svgslide = os.path.abspath(
             os.path.join(os.curdir, "%s.p%d.svg" % (svg_filename, i))
         )
         pdfslide = os.path.abspath(
             os.path.join(os.curdir, "%s.p%d.pdf" % (svg_filename, i))
         )
+
         # Use the correct extension if using images
         if options.imageexport:
             pdfslide = os.path.abspath(
@@ -203,7 +215,6 @@ layer name. The opacity must be between 0 and 1. Example:
         # Determine whether to export pdf's or images (e.g. inkscape -A versus
         # inkscape -e)
         cmd = "inkscape --export-type=pdf -o %s %s" % (pdfslide, svgslide)
-        print(cmd)
         if options.imageexport:
             cmd = "inkscape -d 180 --export-type=png -o %s %s" % (pdfslide, svgslide)
 
