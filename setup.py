@@ -15,7 +15,7 @@ setup(
     url='http://projects.abourget.net',
     license='GPLv3',
     install_requires=[
-        "pyPdf",
+        "pymupdf",
         "lxml",
     ],
     packages=find_packages(exclude=['ez_setup']),

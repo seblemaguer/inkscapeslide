@@ -130,7 +130,6 @@ layer name. The opacity must be between 0 and 1. Example:
     #   take all the layer names separated by ','..
     ink_tspan = "{http://www.w3.org/2000/svg}text/{http://www.w3.org/2000/svg}tspan"
     preslides = [x.text for x in content.findall(ink_tspan) if x.text]
-
     if not bool(preslides):
         print(
             "Make sure you have a text box (with no flowRect) in the "
@@ -183,7 +182,6 @@ layer name. The opacity must be between 0 and 1. Example:
 
             # Don't show it by default...
             set_style(l, "display", "none")
-
             wanted_labels = labels_path.intersection(slide_layers)
             if wanted_labels:
                 if len(wanted_labels) > 1:
@@ -252,28 +250,22 @@ layer name. The opacity must be between 0 and 1. Example:
             print("Please install ImageMagick to provide the 'convert' utility")
     else:
         # Join PDFs
-        has_pyPdf = False
+        has_fitz = False
         try:
-            import pyPdf
+            import fitz
 
-            has_pyPdf = True
+            has_fitz = True
         except:
             pass
 
-        if has_pyPdf:
-            print("Using 'pyPdf' to join PDFs")
-            output = pyPdf.PdfFileWriter()
-            inputfiles = []
+        if has_fitz:
+            print("Using 'fitz' to join PDFs")
+            merger = fitz.open()
             for slide in pdfslides:
-                inputstream = file(slide, "rb")
-                inputfiles.append(inputstream)
-                input = pyPdf.PdfFileReader(inputstream)
-                output.addPage(input.getPage(0))
-            outputStream = file(output_file, "wb")
-            output.write(outputStream)
-            outputStream.close()
-            for f in inputfiles:
-                f.close()
+                with fitz.open(slide) as doc:
+                    merger.insert_pdf(doc)
+            merger.save(output_file)
+            merger.close()
             joinedpdf = True
 
         # Verify pdfjoin exists in PATH
@@ -297,7 +289,7 @@ layer name. The opacity must be between 0 and 1. Example:
             joinedpdf = True
         else:
             print(
-                "Please install pdfjam, pdftk or install the 'pyPdf'"
+                "Please install pdfjam, pdftk or install the 'fitz/pymupdf'"
                 "python package, to join PDFs."
             )
 
